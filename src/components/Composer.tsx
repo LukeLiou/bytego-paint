@@ -1,5 +1,15 @@
 import { ChevronDown, ChevronUp, ImagePlus, LoaderCircle, Settings2, Square, WandSparkles, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
+import { createPortal } from 'react-dom'
 
 import { MODEL_OPTIONS, SIZE_OPTIONS } from '@/lib/models'
 import type { ImageSize, ModelId, PaintingRecord, ReferenceImage } from '@/lib/types'
@@ -25,6 +35,68 @@ interface ComposerProps {
   onCancel: () => void
 }
 
+/** Escape parent overflow clipping by portaling above the trigger. */
+function useAnchoredMenuStyle(open: boolean, anchorRef: RefObject<HTMLElement | null>, menuWidth: number) {
+  const [style, setStyle] = useState<CSSProperties>()
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setStyle(undefined)
+      return
+    }
+
+    const update = () => {
+      const anchor = anchorRef.current
+      if (!anchor) return
+      const rect = anchor.getBoundingClientRect()
+      const width = Math.min(menuWidth, window.innerWidth - 16)
+      const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)
+      setStyle({
+        position: 'fixed',
+        left,
+        bottom: Math.max(8, window.innerHeight - rect.top + 6),
+        width,
+        zIndex: 80
+      })
+    }
+
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [anchorRef, menuWidth, open])
+
+  return style
+}
+
+function AnchoredMenu({
+  open,
+  anchorRef,
+  menuRef,
+  menuWidth,
+  children,
+  className
+}: {
+  open: boolean
+  anchorRef: RefObject<HTMLElement | null>
+  menuRef: RefObject<HTMLDivElement | null>
+  menuWidth: number
+  children: ReactNode
+  className: string
+}) {
+  const style = useAnchoredMenuStyle(open, anchorRef, menuWidth)
+  if (!open || !style || typeof document === 'undefined') return null
+  return createPortal(
+    <div ref={menuRef} className={className} style={style}>
+      {children}
+    </div>,
+    document.body
+  )
+}
+
 function ModelMenu({
   value,
   onChange
@@ -34,32 +106,47 @@ function ModelMenu({
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const current = MODEL_OPTIONS.find((option) => option.id === value) ?? MODEL_OPTIONS[0]
 
   useEffect(() => {
     if (!open) return
     const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
     }
     window.addEventListener('mousedown', onPointerDown)
-    return () => window.removeEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
   }, [open])
 
   return (
     <div ref={rootRef} className="relative min-w-0">
       <button
+        ref={buttonRef}
         type="button"
-        className={`${SELECTOR_BUTTON} max-w-[9.5rem] md:max-w-[240px]`}
+        className={`${SELECTOR_BUTTON} max-w-[11.5rem] md:max-w-[280px]`}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}>
         <span className="truncate">{current.label}</span>
         <ChevronDown className="size-3.5 shrink-0 opacity-60 md:size-4.5" aria-hidden />
       </button>
-      {open && (
-        <div
-          role="listbox"
-          className="absolute bottom-[calc(100%+6px)] left-0 z-30 min-w-[min(240px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-lg md:min-w-[260px] md:p-1.5">
+      <AnchoredMenu
+        open={open}
+        anchorRef={buttonRef}
+        menuRef={menuRef}
+        menuWidth={280}
+        className="max-h-[min(50vh,360px)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl md:p-1.5">
+        <div role="listbox" aria-label="选择模型">
           {MODEL_OPTIONS.map((option) => {
             const selected = option.id === value
             return (
@@ -80,7 +167,7 @@ function ModelMenu({
             )
           })}
         </div>
-      )}
+      </AnchoredMenu>
     </div>
   )
 }
@@ -94,6 +181,8 @@ function SizeSettingsButton({
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const summary = useMemo(
     () => SIZE_OPTIONS.find((option) => option.id === value)?.label ?? value,
     [value]
@@ -103,15 +192,25 @@ function SizeSettingsButton({
   useEffect(() => {
     if (!open) return
     const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
     }
     window.addEventListener('mousedown', onPointerDown)
-    return () => window.removeEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
   }, [open])
 
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={buttonRef}
         type="button"
         className={`${SELECTOR_BUTTON} text-slate-500`}
         aria-label={summary ? `设置: ${summary}` : '设置'}
@@ -123,32 +222,35 @@ function SizeSettingsButton({
           <span className="hidden md:inline">{summary}</span>
         </span>
       </button>
-      {open && (
-        <div className="absolute bottom-[calc(100%+6px)] left-0 z-30 w-[min(300px,calc(100vw-1.5rem))] rounded-xl border border-slate-200 bg-white p-3 shadow-lg md:w-[min(340px,calc(100vw-2rem))] md:p-4">
-          <div className="mb-2.5 text-sm font-medium text-slate-700 md:mb-3 md:text-base">尺寸</div>
-          <div className="flex flex-wrap gap-2">
-            {SIZE_OPTIONS.map((option) => {
-              const selected = option.id === value
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={`rounded-full px-3 py-2 text-sm transition md:px-4 md:py-2.5 md:text-base ${
-                    selected
-                      ? 'bg-slate-900 text-white'
-                      : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                  onClick={() => {
-                    onChange(option.id)
-                    setOpen(false)
-                  }}>
-                  {option.label}
-                </button>
-              )
-            })}
-          </div>
+      <AnchoredMenu
+        open={open}
+        anchorRef={buttonRef}
+        menuRef={menuRef}
+        menuWidth={320}
+        className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl md:p-4">
+        <div className="mb-2.5 text-sm font-medium text-slate-700 md:mb-3 md:text-base">尺寸</div>
+        <div className="flex flex-wrap gap-2">
+          {SIZE_OPTIONS.map((option) => {
+            const selected = option.id === value
+            return (
+              <button
+                key={option.id}
+                type="button"
+                className={`rounded-full px-3 py-2 text-sm transition md:px-4 md:py-2.5 md:text-base ${
+                  selected
+                    ? 'bg-slate-900 text-white'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+                onClick={() => {
+                  onChange(option.id)
+                  setOpen(false)
+                }}>
+                {option.label}
+              </button>
+            )
+          })}
         </div>
-      )}
+      </AnchoredMenu>
     </div>
   )
 }
