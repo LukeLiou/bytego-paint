@@ -11,13 +11,13 @@ import {
 } from 'react'
 
 /** Ported from cherry-studio `PaintingSkeletonSurface`. */
-const DEFAULT_CELL_SIZE = 14
-const DEFAULT_CELL_GAP = 14
-const COMPACT_CELL_SIZE = 6
-const COMPACT_CELL_GAP = 6
+const DEFAULT_CELL_SIZE = 8
+const DEFAULT_CELL_GAP = 8
+const COMPACT_CELL_SIZE = 4
+const COMPACT_CELL_GAP = 4
 const COMPACT_SURFACE_MAX_SIZE = 64
 const MAX_GRID_CELLS = 256
-const CELL_RADIUS = 3
+const CELL_RADIUS = 2
 const BLINK_DURATION_MS = 2000
 const CELL_FILL_DURATION = 0.5
 const CELL_FADE_DURATION_MS = 600

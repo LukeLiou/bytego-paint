@@ -3,6 +3,34 @@ import { type FC, type RefObject, useCallback, useEffect, useRef, useState } fro
 import { DEFAULT_TEMPLATE_ID } from '@/lib/templates'
 import type { TemplatePreset } from '@/lib/types'
 
+const TemplateThumb: FC<{ src?: string; alt?: string }> = ({ src, alt = '' }) => {
+  const [loaded, setLoaded] = useState(false)
+  const showShimmer = !src || !loaded
+
+  useEffect(() => {
+    setLoaded(false)
+  }, [src])
+
+  return (
+    <span
+      className={`pointer-events-none relative block size-full overflow-hidden rounded-2xl shadow-sm ${
+        showShimmer ? 'skeleton-shimmer' : 'bg-white'
+      }`}>
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          className={`absolute inset-0 block size-full object-cover rounded-2xl transition-opacity duration-300 ${
+            loaded ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      ) : null}
+    </span>
+  )
+}
+
 /**
  * Fan / stack slots (±3). Closer x offsets + deeper scale falloff
  * make more cards visibly pile behind the center one.
@@ -375,26 +403,14 @@ const TemplateShowcase: FC<TemplateShowcaseProps> = ({
                 selectByIndex(index)
               }}>
               <span
-                className="pointer-events-none relative block size-full overflow-hidden rounded-2xl bg-white shadow-sm"
+                className="pointer-events-none relative block size-full overflow-hidden rounded-2xl"
                 style={{
                   borderRadius: '1rem',
                   clipPath: 'inset(0 round 1rem)',
                   WebkitClipPath: 'inset(0 round 1rem)',
                   transform: 'translateZ(0)'
                 }}>
-                {preset.imageUrl ? (
-                  <img
-                    src={preset.imageUrl}
-                    alt=""
-                    draggable={false}
-                    className="block size-full object-cover rounded-2xl"
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 rounded-2xl bg-[linear-gradient(145deg,#e2e8f0,transparent_58%)]"
-                  />
-                )}
+                <TemplateThumb src={preset.imageUrl} />
               </span>
             </button>
           )

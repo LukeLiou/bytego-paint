@@ -3,6 +3,8 @@ import { type CSSProperties, type FC, type ReactNode, useCallback, useLayoutEffe
 import PaintingSkeletonSurface from './PaintingSkeletonSurface'
 
 const SKELETON_MAX_SIZE = '100%'
+/** Keep the generating blink grid visually smaller than the final artboard. */
+const GENERATING_MAX_EDGE = 320
 
 interface PaintingImageSkeletonProps {
   imageUrl?: string
@@ -73,11 +75,27 @@ const PaintingImageSkeleton: FC<PaintingImageSkeletonProps> = ({
     }
   }
 
+  // Generating (no reveal image yet): shrink the blink surface so it feels lighter.
+  if (!imageUrl && boxSize) {
+    const scale = Math.min(1, GENERATING_MAX_EDGE / boxSize.width, GENERATING_MAX_EDGE / boxSize.height)
+    if (scale < 1) {
+      boxSize = { width: boxSize.width * scale, height: boxSize.height * scale }
+    }
+  }
+
   const boxStyle: CSSProperties | undefined = boxSize
     ? { width: boxSize.width, height: boxSize.height }
     : ratio == null
       ? undefined
-      : { width: SKELETON_MAX_SIZE, height: 'auto', aspectRatio: String(ratio) }
+      : imageUrl
+        ? { width: SKELETON_MAX_SIZE, height: 'auto', aspectRatio: String(ratio) }
+        : {
+            width: '100%',
+            maxWidth: GENERATING_MAX_EDGE,
+            height: 'auto',
+            aspectRatio: String(ratio),
+            marginInline: 'auto'
+          }
 
   const hasKnownSize = boxStyle != null
   const columnWidth = boxSize?.width
