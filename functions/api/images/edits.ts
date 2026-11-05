@@ -1,0 +1,47 @@
+const BYTEGO_UPSTREAM = 'https://www.bytego.team/v1/images/edits'
+
+interface PagesContext {
+  request: Request
+}
+
+export async function onRequestPost(context: PagesContext): Promise<Response> {
+  const authorization = context.request.headers.get('Authorization')
+  if (!authorization) {
+    return Response.json({ error: '缺少 API Key' }, { status: 401 })
+  }
+
+  let body: ArrayBuffer
+  let contentType: string | null
+  try {
+    contentType = context.request.headers.get('Content-Type')
+    body = await context.request.arrayBuffer()
+  } catch {
+    return Response.json({ error: '无法读取请求体' }, { status: 400 })
+  }
+
+  try {
+    const headers: Record<string, string> = {
+      Authorization: authorization
+    }
+    if (contentType) headers['Content-Type'] = contentType
+
+    const upstream = await fetch(BYTEGO_UPSTREAM, {
+      method: 'POST',
+      headers,
+      body
+    })
+
+    const text = await upstream.text()
+    return new Response(text, {
+      status: upstream.status,
+      headers: {
+        'Content-Type': upstream.headers.get('Content-Type') || 'application/json'
+      }
+    })
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : '上游请求失败' },
+      { status: 502 }
+    )
+  }
+}
