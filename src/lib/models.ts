@@ -3,7 +3,10 @@ import type { ImageSize, ModelId } from './types'
 export const MODEL_OPTIONS: ReadonlyArray<{ id: ModelId; label: string }> = [
   { id: 'gpt-image-2', label: 'GPT-Image-2' },
   { id: 'gpt-image-2.5-flare', label: 'GPT Image 2.5 Flare' },
-  { id: 'gpt-image-2.5-sunburst', label: 'GPT Image 2.5 Sunburst' }
+  { id: 'gpt-image-2.5-sunburst', label: 'GPT Image 2.5 Sunburst' },
+  { id: 'gpt-image-2.6', label: 'GPT Image 2.6' },
+  { id: 'gpt-image-2.6-flare', label: 'GPT Image 2.6 Flare' },
+  { id: 'gpt-image-2.6-sunburst', label: 'GPT Image 2.6 Sunburst' }
 ]
 
 export const SIZE_OPTIONS: ReadonlyArray<{ id: ImageSize; label: string }> = [

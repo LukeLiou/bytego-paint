@@ -1,4 +1,10 @@
-export type ModelId = 'gpt-image-2' | 'gpt-image-2.5-flare' | 'gpt-image-2.5-sunburst'
+export type ModelId =
+  | 'gpt-image-2'
+  | 'gpt-image-2.5-flare'
+  | 'gpt-image-2.5-sunburst'
+  | 'gpt-image-2.6'
+  | 'gpt-image-2.6-flare'
+  | 'gpt-image-2.6-sunburst'
 
 export type ImageSize = '1024x1024' | '1536x1024' | '1024x1536'
 
