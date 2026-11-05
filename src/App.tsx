@@ -187,16 +187,20 @@ export default function App() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/80 bg-white/80 px-3 py-2 backdrop-blur-md md:gap-3 md:px-6 md:py-3">
+      <header className="relative z-30 flex shrink-0 items-center justify-between gap-2 bg-gradient-to-b from-white/55 via-white/25 to-transparent px-3 pt-2 pb-1.5 md:gap-3 md:px-6 md:pt-3 md:pb-2">
         <div className="flex min-w-0 items-center gap-2.5 md:gap-3.5">
           <img
             src="/logo.png"
             alt="AI补给站"
-            className="h-9 w-9 shrink-0 rounded-xl object-cover md:h-14 md:w-14 md:rounded-2xl"
+            className="h-9 w-9 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-white/70 md:h-12 md:w-12 md:rounded-2xl"
           />
           <div className="min-w-0">
-            <div className="truncate text-base font-semibold text-slate-900 md:text-lg">ByteGo 生图</div>
-            <div className="hidden truncate text-sm text-slate-500 sm:block">AI补给站 · 网页版绘画</div>
+            <div className="truncate text-base font-semibold tracking-tight text-slate-900 md:text-lg">
+              ByteGo 生图
+            </div>
+            <div className="hidden truncate text-xs text-slate-500/90 sm:block md:text-sm">
+              AI补给站 · 网页版绘画
+            </div>
           </div>
         </div>
         <button
@@ -206,10 +210,10 @@ export default function App() {
             setRequireKeyForUse(false)
             setKeyDialogOpen(true)
           }}
-          className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-sm transition md:h-10 md:gap-2 md:px-4 md:text-base ${
+          className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-sm shadow-sm backdrop-blur-md transition md:h-10 md:gap-2 md:px-4 md:text-base ${
             apiKey
-              ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+              ? 'border-white/70 bg-white/55 text-slate-600 hover:bg-white/80 hover:text-slate-900'
+              : 'border-white/70 bg-white/55 text-slate-500 hover:bg-white/80 hover:text-slate-800'
           }`}>
           <KeyRound className="size-4 md:size-4.5" />
           <span className="max-w-24 truncate sm:max-w-52">{headerKeyLabel}</span>
@@ -239,7 +243,7 @@ export default function App() {
               <section
                 ref={templateStageRef}
                 data-testid="painting-template-stage"
-                className="[container-type:size] absolute inset-0 z-0 mx-auto flex min-h-0 w-full max-w-7xl items-center justify-center overflow-hidden px-3 pt-3 pb-4 touch-none md:px-5 md:pt-5 md:pb-8">
+                className="[container-type:size] absolute inset-0 z-0 mx-auto flex min-h-0 w-full max-w-7xl items-center justify-center overflow-hidden px-3 pt-1 pb-4 touch-none md:px-5 md:pt-2 md:pb-8">
                 <div className="flex h-full max-h-full min-h-0 w-full flex-col items-center justify-center md:max-h-[34rem]">
                   <h1 className="max-w-3xl shrink-0 px-2 text-center text-[clamp(1.2rem,5.5cqw,2.75rem)] leading-[1.2] font-bold tracking-tight text-slate-900">
                     给你的下一幅杰作，留一个位置。

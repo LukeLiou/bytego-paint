@@ -235,7 +235,7 @@ export function Composer({
       )}
 
       <div
-        className="mx-auto w-full max-w-7xl overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 shadow-lg shadow-slate-900/5 backdrop-blur md:rounded-3xl"
+        className="mx-auto w-full max-w-7xl overflow-hidden rounded-2xl border border-white/80 bg-white/80 shadow-lg shadow-slate-900/5 backdrop-blur-xl md:rounded-3xl"
         onDragOver={(event) => {
           event.preventDefault()
           event.dataTransfer.dropEffect = 'copy'

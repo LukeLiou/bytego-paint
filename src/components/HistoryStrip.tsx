@@ -24,7 +24,7 @@ export function HistoryStrip({
 }: HistoryStripProps) {
   return (
     <aside
-      className="flex shrink-0 gap-2 overflow-x-auto border-b border-slate-200/80 px-2 py-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:h-full md:w-[100px] md:flex-col md:gap-3 md:overflow-x-hidden md:overflow-y-auto md:border-r md:border-b-0 md:px-3 md:py-3"
+      className="flex shrink-0 gap-2 overflow-x-auto bg-transparent px-2 py-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:h-full md:w-[100px] md:flex-col md:gap-3 md:overflow-x-hidden md:overflow-y-auto md:border-r md:border-white/50 md:bg-gradient-to-r md:from-white/30 md:to-transparent md:px-3 md:py-3"
       aria-label="绘画历史">
       <button
         type="button"
@@ -32,7 +32,7 @@ export function HistoryStrip({
         onClick={onAdd}
         aria-label="新建绘画"
         title="新建绘画"
-        className="sticky left-0 z-10 flex size-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 md:sticky md:top-0 md:mb-1 md:size-16 md:rounded-2xl">
+        className="sticky left-0 z-10 flex size-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300/80 bg-white/70 text-slate-500 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-slate-800 disabled:opacity-50 md:sticky md:top-0 md:mb-1 md:size-16 md:rounded-2xl">
         <Plus className="size-5 md:size-6" />
       </button>
 
