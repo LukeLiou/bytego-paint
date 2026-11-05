@@ -207,14 +207,32 @@ export function Composer({
   }
 
   if (collapsed) {
+    const modelLabel = MODEL_OPTIONS.find((option) => option.id === painting.model)?.label ?? painting.model
+    const sizeLabel = SIZE_OPTIONS.find((option) => option.id === painting.size)?.label ?? painting.size
+
     return (
-      <div className="flex justify-center px-3 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-4 md:pb-4">
+      <div className="relative z-20 shrink-0 px-2 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-4 md:pb-4">
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white/90 px-3.5 text-sm text-slate-500 shadow-sm backdrop-blur-xl hover:bg-slate-50 hover:text-slate-800 md:h-11 md:gap-2 md:px-4 md:text-base">
-          <ChevronUp className="size-4 md:size-4.5" />
-          展开提示词
+          className="mx-auto flex w-full max-w-7xl items-center gap-3 rounded-2xl border border-white/80 bg-white/75 px-3.5 py-2.5 text-left shadow-lg shadow-slate-900/5 backdrop-blur-xl transition hover:bg-white/90 md:rounded-3xl md:gap-4 md:px-5 md:py-3.5">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full bg-slate-900/5 px-2 py-0.5 text-[10px] font-medium text-slate-500 md:text-xs">
+                {modelLabel}
+              </span>
+              <span className="rounded-full bg-slate-900/5 px-2 py-0.5 text-[10px] font-medium text-slate-500 md:text-xs">
+                {sizeLabel}
+              </span>
+            </div>
+            <p className="line-clamp-2 text-sm leading-5 text-slate-700 md:text-base md:leading-6">
+              {painting.prompt.trim() || '展开后可继续编辑提示词'}
+            </p>
+          </div>
+          <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-slate-200/80 bg-white/90 px-3 text-sm text-slate-600 md:h-10 md:px-3.5 md:text-base">
+            <ChevronUp className="size-4 md:size-4.5" />
+            编辑
+          </span>
         </button>
       </div>
     )

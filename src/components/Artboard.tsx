@@ -1,5 +1,5 @@
-import { Download, Palette } from 'lucide-react'
-import { type FC, useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { Check, Copy, Download, Palette } from 'lucide-react'
+import { type FC, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import PaintingImageSkeleton from './PaintingImageSkeleton'
 import type { PaintingRecord } from '@/lib/types'
@@ -40,13 +40,72 @@ type RevealState =
   | { status: 'ready'; imageUrl: string; naturalWidth: number; naturalHeight: number }
 
 const ArtboardPromptBar: FC<{ prompt: string; size: PaintingRecord['size'] }> = ({ prompt, size }) => {
+  const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!expanded) return
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setExpanded(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false)
+    }
+    window.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [expanded])
+
+  useEffect(() => {
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(false), 1600)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt)
+      setCopied(true)
+    } catch {
+      // ignore clipboard failures
+    }
+  }
+
   return (
-    <div className="mb-2 flex w-full min-w-0 items-center justify-between gap-2 text-xs text-slate-500">
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-        <Palette className="size-3.5 shrink-0" aria-hidden />
-        <span className="truncate">{prompt}</span>
-      </div>
-      <span className="shrink-0">{sizeLabel(size)}</span>
+    <div ref={rootRef} className="relative mb-2.5 w-full min-w-0">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((value) => !value)}
+        className="flex w-full min-w-0 items-start gap-2 rounded-xl border border-white/70 bg-white/65 px-3 py-2 text-left shadow-sm backdrop-blur-md transition hover:bg-white/85 md:rounded-2xl md:px-3.5 md:py-2.5">
+        <Palette className="mt-0.5 size-3.5 shrink-0 text-slate-400 md:size-4" aria-hidden />
+        <span className="line-clamp-2 min-w-0 flex-1 text-xs leading-5 text-slate-600 md:text-sm md:leading-6">
+          {prompt}
+        </span>
+        <span className="mt-0.5 shrink-0 rounded-full bg-slate-900/5 px-2 py-0.5 text-[10px] font-medium tracking-wide text-slate-500 md:text-xs">
+          {sizeLabel(size)}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border border-slate-200/80 bg-slate-900 p-3 text-xs leading-relaxed text-slate-50 shadow-xl md:rounded-2xl md:p-3.5 md:text-sm">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-medium tracking-wide text-slate-400 uppercase md:text-xs">提示词</span>
+            <button
+              type="button"
+              onClick={() => void onCopy()}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-slate-200 transition hover:bg-white/10 md:text-xs">
+              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              {copied ? '已复制' : '复制'}
+            </button>
+          </div>
+          <p className="max-h-48 overflow-y-auto break-words whitespace-pre-wrap select-text">{prompt}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -147,22 +206,24 @@ export function Artboard({ painting, loading = false }: ArtboardProps) {
             topBar={promptBar}
           />
         ) : painting.imageDataUrl ? (
-          <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden px-2">
-            <div className="flex max-h-full max-w-full flex-col items-stretch">
+          <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden px-3 md:px-4">
+            <div className="flex max-h-full w-full max-w-[min(100%,720px)] flex-col items-stretch">
               {promptBar}
-              <img
-                src={painting.imageDataUrl}
-                alt={painting.prompt || '生成结果'}
-                className="max-h-[min(70dvh,720px)] max-w-full rounded-md object-contain"
-              />
+              <div className="relative overflow-hidden rounded-xl bg-white/40 shadow-sm ring-1 ring-white/70 md:rounded-2xl">
+                <img
+                  src={painting.imageDataUrl}
+                  alt={painting.prompt || '生成结果'}
+                  className="max-h-[min(62dvh,640px)] w-full object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={onDownload}
+                  className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-medium text-slate-700 shadow-sm backdrop-blur-md hover:bg-white md:right-4 md:bottom-4 md:px-3.5 md:text-sm">
+                  <Download className="size-3.5 md:size-4" />
+                  下载
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={onDownload}
-              className="absolute right-4 bottom-4 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-white">
-              <Download className="size-3.5" />
-              下载
-            </button>
           </div>
         ) : (
           <div
