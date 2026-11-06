@@ -40,12 +40,10 @@ export default function App() {
       const [history, catalog] = await Promise.all([listPaintings(), loadTemplates().catch(() => [])])
       if (cancelled) return
       setTemplates(catalog)
-      if (history.length > 0) {
-        setItems(history)
-        setCurrent(history[0])
-      } else {
-        setItems((prev) => (prev.length > 0 ? prev : [current]))
-      }
+      // Refresh always opens a blank canvas; completed works stay in the strip only.
+      const draft = createDraftPainting()
+      setCurrent(draft)
+      setItems([draft, ...history])
       hydratedRef.current = true
     })()
     return () => {
@@ -56,10 +54,18 @@ export default function App() {
   useEffect(() => {
     if (!hydratedRef.current) return
     setItems((prev) => {
-      const next = prev.some((item) => item.id === current.id)
-        ? prev.map((item) => (item.id === current.id ? current : item))
-        : [current, ...prev]
-      return next.sort((a, b) => b.updatedAt - a.updatedAt)
+      const byId = new Map(prev.map((item) => [item.id, item]))
+      byId.set(current.id, current)
+      const all = [...byId.values()]
+      const drafts = all.filter((item) => !item.imageDataUrl && !item.persistedAt)
+      const done = all
+        .filter((item) => Boolean(item.imageDataUrl || item.persistedAt))
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+      const orderedDrafts = [
+        ...drafts.filter((item) => item.id === current.id),
+        ...drafts.filter((item) => item.id !== current.id)
+      ]
+      return [...orderedDrafts, ...done]
     })
   }, [current])
 
@@ -151,9 +157,15 @@ export default function App() {
   const onAdd = useCallback(() => {
     const draft = createDraftPainting({ model: current.model, size: current.size })
     setCurrent(draft)
-    setItems((prev) => [draft, ...prev])
+    setItems((prev) => {
+      const keep = prev.filter((item) => {
+        if (item.id === current.id) return false
+        return Boolean(item.imageDataUrl || item.persistedAt || item.prompt.trim() || (item.referenceImages?.length ?? 0) > 0)
+      })
+      return [draft, ...keep]
+    })
     setError(undefined)
-  }, [current.model, current.size])
+  }, [current.id, current.model, current.size])
 
   const onSelect = useCallback(
     (id: string) => {
