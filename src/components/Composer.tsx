@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, ImagePlus, LoaderCircle, Settings2, Square, WandSparkles, X } from 'lucide-react'
 import {
   type CSSProperties,
-  type KeyboardEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type RefObject,
   useEffect,
@@ -323,7 +323,7 @@ export function Composer({
     onReferenceImagesChange(references.filter((item) => item.id !== id))
   }
 
-  const onPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const onPromptKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
     event.preventDefault()
     if (!canGenerate) return
