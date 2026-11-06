@@ -1,4 +1,5 @@
 import { normalizeApiKey } from './apiKey'
+import { messageFromUpstreamBody } from './upstreamError'
 import type { ImageSize, ModelId, ReferenceImage } from './types'
 
 export interface GenerateInput {
@@ -73,16 +74,18 @@ async function buildEditFormData(input: GenerateInput, references: ReferenceImag
 }
 
 async function parseImageResponse(response: Response, signal?: AbortSignal): Promise<GenerateResult> {
-  const payload = (await response.json().catch(() => ({}))) as UpstreamResponse & { error?: unknown }
+  const rawText = await response.text()
+  const contentType = response.headers.get('content-type')
+
   if (!response.ok) {
-    const rawError = payload.error
-    const message =
-      typeof rawError === 'string'
-        ? rawError
-        : rawError && typeof rawError === 'object' && 'message' in rawError && typeof rawError.message === 'string'
-          ? rawError.message
-          : `生成失败（${response.status}）`
-    throw new Error(message)
+    throw new Error(messageFromUpstreamBody(response.status, rawText, contentType))
+  }
+
+  let payload: UpstreamResponse
+  try {
+    payload = JSON.parse(rawText) as UpstreamResponse
+  } catch {
+    throw new Error(messageFromUpstreamBody(response.status || 502, rawText, contentType))
   }
 
   const item = payload.data?.[0]

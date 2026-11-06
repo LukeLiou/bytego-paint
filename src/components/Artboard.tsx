@@ -119,16 +119,24 @@ export function Artboard({ painting, loading = false }: ArtboardProps) {
 
   useLayoutEffect(() => {
     const paintingChanged = paintingIdRef.current !== painting.id
+    const wasLoading = previousLoadingRef.current
     paintingIdRef.current = painting.id
+    previousLoadingRef.current = loading
+
     if (paintingChanged) {
       awaitingRevealRef.current = false
       setRevealState(null)
     }
 
-    const wasLoading = paintingChanged ? loading : previousLoadingRef.current
-    previousLoadingRef.current = loading
-
+    // Generating: always show the blink grid; do not carry reveal state across.
     if (loading) {
+      awaitingRevealRef.current = false
+      setRevealState(null)
+      return
+    }
+
+    // Switched to another finished painting: show it directly, no reveal.
+    if (paintingChanged) {
       awaitingRevealRef.current = false
       setRevealState(null)
       return

@@ -26,13 +26,18 @@ export default function App() {
   const [items, setItems] = useState<PaintingRecord[]>([])
   const [current, setCurrent] = useState<PaintingRecord>(() => createDraftPainting())
   const [templates, setTemplates] = useState<TemplatePreset[]>([])
-  const [generating, setGenerating] = useState(false)
+  const [generatingPaintingId, setGeneratingPaintingId] = useState<string | null>(null)
   const [promptCollapsed, setPromptCollapsed] = useState(false)
   const [error, setError] = useState<string>()
   const abortRef = useRef<AbortController | null>(null)
   const hydratedRef = useRef(false)
   const pendingGenerateRef = useRef(false)
   const templateStageRef = useRef<HTMLElement | null>(null)
+  const currentIdRef = useRef(current.id)
+  const errorByPaintingRef = useRef(new Map<string, string>())
+
+  const isCurrentGenerating = generatingPaintingId === current.id
+  const isGenerating = generatingPaintingId != null
 
   useEffect(() => {
     let cancelled = false
@@ -42,6 +47,7 @@ export default function App() {
       setTemplates(catalog)
       // Refresh always opens a blank canvas; completed works stay in the strip only.
       const draft = createDraftPainting()
+      currentIdRef.current = draft.id
       setCurrent(draft)
       setItems([draft, ...history])
       hydratedRef.current = true
@@ -69,16 +75,16 @@ export default function App() {
     })
   }, [current])
 
-  const showTemplateShowcase = !current.imageDataUrl && !generating && !current.persistedAt
+  const showTemplateShowcase = !current.imageDataUrl && !isCurrentGenerating && !current.persistedAt
   const canCollapse = Boolean(current.imageDataUrl) && !showTemplateShowcase
 
   useEffect(() => {
-    if (generating || showTemplateShowcase || !current.imageDataUrl) {
+    if (isCurrentGenerating || showTemplateShowcase || !current.imageDataUrl) {
       setPromptCollapsed(false)
       return
     }
     setPromptCollapsed(true)
-  }, [current.id, current.imageDataUrl, generating, showTemplateShowcase])
+  }, [current.id, current.imageDataUrl, isCurrentGenerating, showTemplateShowcase])
 
   const patchCurrent = useCallback((updates: Partial<PaintingRecord>) => {
     setCurrent((prev) => ({ ...prev, ...updates, updatedAt: Date.now() }))
@@ -99,34 +105,52 @@ export default function App() {
         return
       }
 
+      const targetId = current.id
+      const snapshot = current
+
+      errorByPaintingRef.current.delete(targetId)
       setError(undefined)
-      setGenerating(true)
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
+      setGeneratingPaintingId(targetId)
 
       try {
         const result = await generateImage({
           apiKey: key,
-          model: current.model,
-          prompt: current.prompt.trim(),
-          size: current.size,
-          referenceImages: current.referenceImages,
+          model: snapshot.model,
+          prompt: snapshot.prompt.trim(),
+          size: snapshot.size,
+          referenceImages: snapshot.referenceImages,
           signal: controller.signal
         })
+        // A newer request may have replaced this one while we awaited.
+        if (abortRef.current !== controller) return
+        errorByPaintingRef.current.delete(targetId)
         const next: PaintingRecord = {
-          ...current,
+          ...snapshot,
           imageDataUrl: result.imageDataUrl,
           persistedAt: Date.now(),
           updatedAt: Date.now()
         }
-        setCurrent(next)
+        // Keep viewing history if the user already switched away during generation.
+        setCurrent((prev) => (prev.id === targetId ? next : prev))
         await persistCurrent(next)
       } catch (err) {
         if ((err as Error).name === 'AbortError') return
-        setError(err instanceof Error ? err.message : '生成失败')
+        if (abortRef.current !== controller) return
+        const message = err instanceof Error ? err.message : '生成失败'
+        errorByPaintingRef.current.set(targetId, message)
+        if (currentIdRef.current === targetId) {
+          setError(message)
+        }
       } finally {
-        setGenerating(false)
+        // Only the active request may clear the generating marker; an aborted
+        // predecessor must not wipe state for the request that replaced it.
+        if (abortRef.current === controller) {
+          abortRef.current = null
+          setGeneratingPaintingId((id) => (id === targetId ? null : id))
+        }
       }
     },
     [current, persistCurrent]
@@ -150,12 +174,15 @@ export default function App() {
   }, [current.prompt, runGenerate])
 
   const onCancel = useCallback(() => {
-    abortRef.current?.abort()
-    setGenerating(false)
+    const controller = abortRef.current
+    abortRef.current = null
+    controller?.abort()
+    setGeneratingPaintingId(null)
   }, [])
 
   const onAdd = useCallback(() => {
     const draft = createDraftPainting({ model: current.model, size: current.size })
+    currentIdRef.current = draft.id
     setCurrent(draft)
     setItems((prev) => {
       const keep = prev.filter((item) => {
@@ -171,11 +198,16 @@ export default function App() {
     (id: string) => {
       const found = items.find((item) => item.id === id)
       if (found) {
+        currentIdRef.current = found.id
         setCurrent(found)
-        setError(undefined)
+        setError(errorByPaintingRef.current.get(found.id))
+        // Selecting the in-flight painting should immediately restore generating UI.
+        if (generatingPaintingId === found.id) {
+          setPromptCollapsed(false)
+        }
       }
     },
-    [items]
+    [generatingPaintingId, items]
   )
 
   const onDelete = useCallback(
@@ -185,10 +217,14 @@ export default function App() {
         const next = prev.filter((item) => item.id !== id)
         if (next.length === 0) {
           const draft = createDraftPainting()
+          currentIdRef.current = draft.id
           setCurrent(draft)
           return [draft]
         }
-        if (current.id === id) setCurrent(next[0])
+        if (current.id === id) {
+          currentIdRef.current = next[0].id
+          setCurrent(next[0])
+        }
         return next
       })
     },
@@ -241,16 +277,18 @@ export default function App() {
         <HistoryStrip
           items={items}
           selectedId={current.id}
-          runningId={generating ? current.id : undefined}
+          runningId={generatingPaintingId ?? undefined}
           onAdd={onAdd}
           onSelect={onSelect}
           onDelete={onDelete}
-          busy={generating}
+          busy={isGenerating}
         />
 
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            {!showTemplateShowcase && <Artboard painting={current} loading={generating} />}
+            {!showTemplateShowcase && (
+              <Artboard key={current.id} painting={current} loading={isCurrentGenerating} />
+            )}
             {showTemplateShowcase && (
               <section
                 ref={templateStageRef}
@@ -293,8 +331,8 @@ export default function App() {
 
           <Composer
             painting={current}
-            generating={generating}
-            collapsed={promptCollapsed}
+            generating={isCurrentGenerating}
+            collapsed={promptCollapsed && !isCurrentGenerating}
             canCollapse={canCollapse}
             onToggleCollapse={() => setPromptCollapsed((value) => !value)}
             onPromptChange={(prompt) => patchCurrent({ prompt })}

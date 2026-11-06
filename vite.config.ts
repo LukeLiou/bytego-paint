@@ -53,8 +53,26 @@ function proxyRoute(route: string, upstreamUrl: string): Plugin {
             })
 
             const text = await upstream.text()
+            const upstreamType = upstream.headers.get('content-type') || ''
+            const looksHtml =
+              upstreamType.includes('text/html') ||
+              text.trimStart().startsWith('<!DOCTYPE') ||
+              text.trimStart().startsWith('<html') ||
+              /Attention Required!\s*\|\s*Cloudflare/i.test(text)
+
+            if (looksHtml) {
+              res.statusCode = upstream.status || 502
+              res.setHeader('Content-Type', 'application/json')
+              const message =
+                upstream.status === 403
+                  ? '上游 ByteGo 被 Cloudflare 拦截（403），请稍后重试或更换网络'
+                  : `上游返回了网页错误页（${upstream.status}），请稍后重试`
+              res.end(JSON.stringify({ error: message }))
+              return
+            }
+
             res.statusCode = upstream.status
-            res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json')
+            res.setHeader('Content-Type', upstreamType || 'application/json')
             res.end(text)
           } catch (error) {
             res.statusCode = 502

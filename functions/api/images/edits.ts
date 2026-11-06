@@ -32,10 +32,25 @@ export async function onRequestPost(context: PagesContext): Promise<Response> {
     })
 
     const text = await upstream.text()
+    const upstreamType = upstream.headers.get('Content-Type') || ''
+    const looksHtml =
+      upstreamType.includes('text/html') ||
+      text.trimStart().startsWith('<!DOCTYPE') ||
+      text.trimStart().startsWith('<html') ||
+      /Attention Required!\s*\|\s*Cloudflare/i.test(text)
+
+    if (looksHtml) {
+      const message =
+        upstream.status === 403
+          ? '上游 ByteGo 被 Cloudflare 拦截（403），请稍后重试或更换网络'
+          : `上游返回了网页错误页（${upstream.status}），请稍后重试`
+      return Response.json({ error: message }, { status: upstream.status || 502 })
+    }
+
     return new Response(text, {
       status: upstream.status,
       headers: {
-        'Content-Type': upstream.headers.get('Content-Type') || 'application/json'
+        'Content-Type': upstreamType || 'application/json'
       }
     })
   } catch (error) {
