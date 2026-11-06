@@ -305,6 +305,10 @@ export function Composer({
   const references = painting.referenceImages ?? []
   const canAddMore = references.length < MAX_REFERENCE_IMAGES
   const canGenerate = Boolean(painting.prompt.trim()) && !generating
+  const generateShortcut = useMemo(() => {
+    if (typeof navigator === 'undefined') return 'Ctrl+Enter'
+    return /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent) ? '⌘↵' : 'Ctrl+↵'
+  }, [])
 
   const addFiles = async (fileList: FileList | File[] | null) => {
     if (!fileList || fileList.length === 0 || !canAddMore) return
@@ -490,10 +494,13 @@ export function Composer({
               type="button"
               onClick={onGenerate}
               disabled={!canGenerate}
-              title="⌘/Ctrl + Enter"
+              aria-keyshortcuts="Meta+Enter Control+Enter"
               className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 md:h-11 md:gap-2 md:px-5 md:text-base">
               <WandSparkles className="size-3.5 md:size-4.5" />
               生成
+              <kbd className="ml-0.5 rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-white/90 md:text-xs">
+                {generateShortcut}
+              </kbd>
             </button>
           )}
         </div>
