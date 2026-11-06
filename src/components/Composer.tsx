@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, ImagePlus, LoaderCircle, Settings2, Square, WandSparkles, X } from 'lucide-react'
 import {
   type CSSProperties,
+  type KeyboardEvent,
   type ReactNode,
   type RefObject,
   useEffect,
@@ -279,6 +280,12 @@ async function filesToReferenceImages(files: FileList | File[]): Promise<Referen
   return next
 }
 
+function hasFileDrag(event: { dataTransfer?: DataTransfer | null }) {
+  const types = event.dataTransfer?.types
+  if (!types) return false
+  return Array.from(types).includes('Files')
+}
+
 export function Composer({
   painting,
   generating,
@@ -293,8 +300,11 @@ export function Composer({
   onCancel
 }: ComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dragDepthRef = useRef(0)
+  const [dragActive, setDragActive] = useState(false)
   const references = painting.referenceImages ?? []
   const canAddMore = references.length < MAX_REFERENCE_IMAGES
+  const canGenerate = Boolean(painting.prompt.trim()) && !generating
 
   const addFiles = async (fileList: FileList | File[] | null) => {
     if (!fileList || fileList.length === 0 || !canAddMore) return
@@ -304,8 +314,20 @@ export function Composer({
     onReferenceImagesChange([...references, ...incoming])
   }
 
+  const clearDragState = () => {
+    dragDepthRef.current = 0
+    setDragActive(false)
+  }
+
   const removeReference = (id: string) => {
     onReferenceImagesChange(references.filter((item) => item.id !== id))
+  }
+
+  const onPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
+    event.preventDefault()
+    if (!canGenerate) return
+    onGenerate()
   }
 
   if (collapsed) {
@@ -355,15 +377,43 @@ export function Composer({
       )}
 
       <div
-        className="mx-auto w-full max-w-7xl overflow-hidden rounded-2xl border border-white/80 bg-white/80 shadow-lg shadow-slate-900/5 backdrop-blur-xl md:rounded-3xl"
-        onDragOver={(event) => {
+        className={`relative mx-auto w-full max-w-7xl overflow-hidden rounded-2xl border bg-white/80 shadow-lg shadow-slate-900/5 backdrop-blur-xl transition md:rounded-3xl ${
+          dragActive ? 'border-blue-400 ring-2 ring-blue-400/30' : 'border-white/80'
+        }`}
+        onDragEnter={(event) => {
+          if (!hasFileDrag(event) || generating || !canAddMore) return
           event.preventDefault()
-          event.dataTransfer.dropEffect = 'copy'
+          dragDepthRef.current += 1
+          setDragActive(true)
+        }}
+        onDragOver={(event) => {
+          if (!hasFileDrag(event)) return
+          event.preventDefault()
+          event.dataTransfer.dropEffect = canAddMore && !generating ? 'copy' : 'none'
+        }}
+        onDragLeave={(event) => {
+          if (!hasFileDrag(event)) return
+          event.preventDefault()
+          dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+          if (dragDepthRef.current === 0) setDragActive(false)
         }}
         onDrop={(event) => {
           event.preventDefault()
+          clearDragState()
+          if (generating || !canAddMore) return
           void addFiles(event.dataTransfer.files)
         }}>
+        {dragActive && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-blue-50/85 px-4 text-center backdrop-blur-[2px]">
+            <div className="rounded-2xl border border-dashed border-blue-300 bg-white/90 px-4 py-3 text-sm font-medium text-blue-700 shadow-sm md:px-5 md:py-4 md:text-base">
+              松开鼠标，添加参考图
+              <div className="mt-1 text-xs font-normal text-blue-600/80 md:text-sm">
+                支持图片，最多 {MAX_REFERENCE_IMAGES} 张
+              </div>
+            </div>
+          </div>
+        )}
+
         {references.length > 0 && (
           <div className="flex gap-2 overflow-x-auto px-3 pt-3 md:gap-2.5 md:px-5 md:pt-4">
             {references.map((item) => (
@@ -388,13 +438,14 @@ export function Composer({
         <textarea
           value={painting.prompt}
           onChange={(event) => onPromptChange(event.target.value)}
+          onKeyDown={onPromptKeyDown}
           onPaste={(event) => {
             const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'))
             if (files.length === 0) return
             event.preventDefault()
             void addFiles(files)
           }}
-          placeholder="描述你想生成的画面，或上传参考图后改写…"
+          placeholder="描述你想生成的画面，可拖拽/粘贴参考图到此处；⌘/Ctrl + Enter 生成"
           rows={3}
           className="block max-h-[28vh] min-h-[4.5rem] w-full resize-none overflow-y-auto border-0 bg-transparent px-3.5 pt-3 pb-2 text-base leading-6 text-slate-800 outline-none placeholder:text-slate-400 md:max-h-none md:min-h-[10rem] md:px-5 md:pt-4 md:pb-3 md:text-lg md:leading-8"
         />
@@ -438,7 +489,8 @@ export function Composer({
             <button
               type="button"
               onClick={onGenerate}
-              disabled={!painting.prompt.trim()}
+              disabled={!canGenerate}
+              title="⌘/Ctrl + Enter"
               className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 md:h-11 md:gap-2 md:px-5 md:text-base">
               <WandSparkles className="size-3.5 md:size-4.5" />
               生成
